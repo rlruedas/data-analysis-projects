@@ -1,0 +1,448 @@
+---
+title: 'Lecture 2: Summarizing and cleaning data'
+author: "CPECGM2"
+---
+
+## Agenda
+
+- Dataframe basics
+- Data cleaning tasks
+- Data aggregation 
+
+## Preliminaries
+
+#### Installing and loading packages
+
+* packages: open source extensions to R. Contain new functions.
+* Let's download the package `plyr` for todays lecture. Use the `Tools -> Install Packages...` dropdown menu option to do this. 
+    + We did this last lecture to download `rmarkdown`
+* After downloading a package, you need to tell R to load it into memory. The command for this is `library`:
+
+```{r}
+library(plyr)
+```
+
+* If you use a package, you need to load it into memory each time you start R. (but you only need to download it once)
+    + Reason: packages can be made by anyone, so they may contain different functions that are identically named.
+
+* The following commands in today's lecture are from the `plyr` package: `ddply()`, `mutate()`, `arrange()`, `summarize()`, and `revalue()`. 
+
+* The author of a package will often write a short PDF tutorial explaining its use. In the R community these are called "vignettes", and you can often find them using google. The vignette for `plyr` is here: http://www.jstatsoft.org/v40/i01/paper
+
+#### Setting the working diretory
+
+* To set the working directory, use the `Session -> Set working directory ...` dropdown menu option. 
+* Often you'll want to set the directory to the location of the source file.
+
+#### Reading a data file in comma-separated-value (CSV) format.
+
+* The data file `expenditures_lec2.csv` contains demographic information and spending patterns of 45 households in the US. 
+* To load this file as a data frame, type:
+```{r}
+# Load the file and save it as a data frame called expenditures.
+# Don't forget to change the working directory if necessary!
+expenditures = read.table(file='expenditures_lec2.csv', header=T, sep=',')
+```
+
+Argument | Description
+----|----
+`file` | Name of the file
+`header` | `header=T` means the first row of the file contains the column names
+`sep` | `sep=','` means the data entries are separated by commas
+
+* Could also use `read.csv(file='expenditures.csv', header=T)`, which assumes that `sep=','`.
+
+#### Viewing a data frame
+```{r}
+# what are the dimensions of the data frame?
+dim(expenditures)  # expenditures has 45 rows and 10 columns
+# look at the first few rows of a data frame
+head(expenditures)
+# print a summary of the data frame
+summary(expenditures)
+```
+
+* For a spreadsheet-style view of the data frame, in Rstudio you can type `View(expenditures)` into the console, or click on the variable in environment window.
+
+## A tiny bit of data cleaning
+
+#### Changing the column names in a data frame
+
+```{r}
+# what are the names of the columns?
+names(expenditures)
+# change the 3th column name from population.size to pop.size
+names(expenditures)[3] = 'pop.size'
+names(expenditures)
+# change the 1st and 3rd columns to id.number and population.size 
+names(expenditures)[ c(1,3) ] = c('id.number', 'population.size')
+```
+
+#### Missing data values
+
+* Look at the last row of `expenditures`
+```{r}
+expenditures[45, ]
+```
+* `NA` stands for missing values
+* Missing values can cause R to behave in unexpected ways
+* Example: can't take the mean when there are missing values
+```{r}
+# create a vector with missing values
+vec = c(25, 73, NA, 22)
+# R returns NA for the mean if there are missing values
+mean(vec)
+# optional argument: remove missing values before taking mean
+mean(vec, na.rm=T)
+```
+* Different functions may behave in different ways or have arguments to change the default behavior. This can cause unexpected behavior!
+* Better to check beforehand if there are missing values in your data. 
+* `complete.cases()` returns a boolean vector for each row indicating if there are no NA values:
+```{r}
+# Only the last row has missing data
+complete.cases(expenditures)
+# let's look at this row
+expenditures[ !complete.cases(expenditures), ]
+```
+* The `is.na()` command gives a boolean check whether a value is NA:
+```{r}
+is.na( expenditures$population.size)
+```
+* You can use the `subset()` command with the logical function `is.na()` to check for NAs is a particular column:
+```{r}
+# keep all rows where income.class is not NA:
+expenditures = subset(expenditures, subset = !is.na(population.size))
+expenditures
+# Q: how about
+# expenditures = subset(expenditures, subset = complete.cases(expenditures)) ?
+```
+
+#### Coded Data
+
+A factor is a type of variable (like text or numeric variables). Factors can only take a fixed number of levels, and are used for coded data. The column `expenditures$region` is a factor:
+
+```{r}
+# the first 8 elements of expenditures$region:
+expenditures$region[1:8]
+```
+
+You can tell it's a factor because the levels are listed (Midwest, Northeast, South, and West).
+
+It takes less memory to store the column as a factor than as raw text. Internally, R stores the column as a vector of integers, and keeps a "key" mapping the integers to their descriptive labels.
+
+The `levels` command gives you a text vector of the factor levels:
+```{r}
+levels(expenditures$region)
+```
+
+#### Relabeling coded data
+
+* Use the `mapvalues()` command (part of `plyr` package)
+* Let's change the label `Northeast` to the more descriptive label `Cold`:
+```{r}
+# change Northeast to Cold
+expenditures$region = mapvalues(expenditures$region, from="Northeast", to="Cold")
+expenditures$region[1:8]
+# change multiple labels at once
+expenditures$region = mapvalues(expenditures$region, 
+                                from=c('Midwest', 'Cold', 'South', 'West'),
+                                to=c('MW', 'NE', 'S', 'W'))
+expenditures$region[1:8]
+# save typing with the levels command:
+#expenditures$region = mapvalues(expenditures$region,
+#                                from = levels(expenditures$region),
+ #                               to = c('Midwest', 'Northeast', 'South', 'West'))
+#expenditures$region[1:8]
+```
+
+* Typing `?mapvalues` shows that it requires 3 arguments
+    + `x`: the vector
+    + `from`: a text vector with the old descriptive labels of factor levels 
+    + `to`: a text vector with the new descriptive labels for the factor levels in `from`
+    
+* `mapvalues` is useful for reducing the number of different factor levels:
+```{r}
+# what does this do?
+expenditures$income.class = mapvalues(expenditures$income.class,
+                          from = c("$5K-$9,999", "$10K-$14,999", "$15K-$19,999",
+                            "$20K-$29,999", "$30K-$39,999", "$40K-$49,999",
+                            "$50K-$69,999", "$70K+"),
+                          to = c("low", "low", "low", "medium", "medium", "medium", "high", "high") )
+expenditures$income.class
+```
+
+#### Converting factors to numbers
+
+R will silently convert your categorical data from text into factors and vice versa, depending on the application.
+
+Usually this is what you want. Sometimes, R will get confused and give you unexpected output. Then you can tell R explicitly what the type of the variable should be. You can use the following commands:
+
+* `as.factor(x)`: converts `x` into a factor
+* `as.numeric(x)`: converts `x` into a number if possible, or returns `NA` if `x` is non-numeric.
+* `as.character(x)`: converts `x` into a text vector
+
+It will be easier to motivate these commands later in the course as need arises. The less you have to worry about this, the better. But here are some examples: 
+
+```{r}
+x = c('Bill', 'Betty', 'Bob')
+# convert to a factor, with listed levels
+as.factor(x)
+# convert to a number? R returns NA
+as.numeric(x)
+
+# convert to a factor and save as x:
+x = as.factor(x)
+# we can see x is a factor since the levels are listed
+x
+# factors are internally numbers, so we can convert to numeric now if we want
+as.numeric(x)
+# we can convert back to character if we want
+as.character(x)
+# what will this do?
+as.numeric(as.character( x) )
+
+# occaisionally you get text numbers
+x = c("5", "24", "15", "fifty-four")
+# we can convert this mostly to numbers
+as.numeric(x)
+# suppose R converts this to a factor...
+x = as.factor(x)
+x
+# now the levels are internally numbers, returned by as.numeric:
+as.numeric(x)
+# if we want to get back 5, 24, and 15, we have to convert to character first!
+as.numeric( as.character(x))
+```
+
+#### The `with()` command
+
+* Repeatedly referencing a column in a data frame (like `expenditures$region`) is verbose.
+* In the `with()` command, you specify the data frame once and then its columns can be referenced by name
+* The `with()` command can make your code more readable (and thus less error-prone). 
+
+```{r, fig.align='center'}
+# make a plot
+with(expenditures, plot(x=food[ region == "S" ], y=housing[ region == "S"])) # easier to read!
+```
+
+## Data aggregation
+
+#### Finding aggregate statistics with `summarize()`
+
+* The command `summarize()` can be used to summarize a data frame:
+```{r}
+summarize(expenditures, avg.food = mean(food), avg.housing = mean(housing), n.households = length(housing))
+```
+
+#### Grouping and then finding aggregate statistics
+
+* `ddply()` breaks up a data frame into smaller groups, and then calls a function of your choosing on each group:
+```{r}
+# group by region and then take summary
+ddply(expenditures, "region", summarize, avg.food = mean(food), avg.housing = mean(housing), n.households = length(housing))
+# group by region and income class
+counts = ddply(expenditures, c("region", "income.class"), summarize, n.households = length(housing))
+counts 
+```
+
+#### Adding new columns that are statistics 
+
+The `mutate()` command is similar to `summarize()`, except that it keeps the original data frame. 
+```{r}
+# What is the total spent by each household?
+expenditures = mutate(expenditures, total = food + housing + healthcare + transportation)
+head(expenditures)
+```
+
+* `mutate()` can also be combined with `ddply()`. A common task is to convert counts into percentages:
+```{r}
+# What fraction of households in each region are in each income class?
+ddply(counts, "region", mutate, percent = n.households / sum(n.households))
+```
+
+* The `transform()` command is very similar to `mutate()` command
+
+#### Grouping by continuous variables with `cut()`
+
+* `cut()` creates discrete labels from continuous data
+```{r}
+# create age categories manually
+expenditures$age.cat = cut(expenditures$age.respondent, breaks = c(0, 30, 50, 70, Inf), labels = c('0-30', '31-50', '51-70', '71+'))
+# use the age categories to group the data and find average family size
+ddply(expenditures, "age.cat", summarize, avg.fam.size = mean(family.size))
+```
+
+* `cut_number()` (part of the `ggplot2` package) assign labels so that each group has the same number of elements, which can sometimes be helpful.
+```{r}
+library(ggplot2)
+expenditures$age.cat = cut_number(expenditures$age.respondent, n = 4, labels = c('A', 'B', 'C', 'D'))
+# how many members in each category? Should be equal:
+ddply(expenditures, "age.cat", summarize, size = length(age.cat))
+```
+
+## R coding style 
+(taken from 94-842)
+
+- Objective: make your code easy to read 
+
+- A few R "style guides" exist:
+    - [Google's](https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml) (a bit long)
+    - [Hadley Wickham's](http://r-pkgs.had.co.nz/style.html) (short and easy to follow)
+
+- Borrowing Hadley Wickham's words:
+
+> You don’t have to use my style, but you really should use a **consistent** style.
+
+We'll enforce only a few requirements:
+
+**Enforced style: Spacing**
+
+- Binary operators should have spaces around them
+
+- Commas should have a space after, but not before (just like in writing)
+
+```{r, eval=FALSE}
+3 * 4 # Good
+3*4 # Bad
+which(student.names == "Eric") # Good
+which(student.names=="Eric") # Bad
+```
+
+- For specifying arguments, spacing around `=` is optional
+
+```{r, eval=FALSE}
+sort(tv.hours, decreasing=TRUE) # Accepted
+sort(tv.hours, decreasing = FALSE) # Accepted
+```
+
+**Enforced style: Variable names**
+
+- To make code easy to read, debug, and maintain, you should use **concise** but **descriptive** variable names
+
+- Terms in variable names should be separated by `_` or `.`
+
+```{r, eval=FALSE}
+# Accepted
+day_one   day.one   day_1   day.1   day1
+
+# Bad
+d1   DayOne   dayone   
+
+# Can be made more concise:
+first.day.of.the.month
+```
+
+- Avoid using variable names that are already pre-defined in R
+```{r, eval=FALSE}
+# EXTREMELY bad:
+c   T   pi   sum   mean   
+```
+
+**Commenting** 
+
+- Adding comments with `#` is an **extremely** important part of writing code. I cannot emphasize this enough. 
+
+- With uncommented code, you have to parse every single line. You never know which parts are important for your general understanding and which parts are details that you can worry about later.
+
+- In a well-commented program, you should be able to understand what is going on by focusing almost all of your attention on the comments, while just skimming the actual code when necessary to get the details of the operation. 
+
+- The actual number of comments required to achieve this will depend on the complexity of your program, and on the audience. I would rather that you err on the side of too many comments. If there are too many comments, it's easy for me to know when it's safe to skip over them. 
+
+
+
+
+## Self-Study Material
+
+#### Viewing data frames
+
+* More commands for viewing data frames:
+```{r}
+# a different summary that gives the data type of each column
+str(expenditures)
+```
+
+#### Creating data frames
+
+* To create a data frame, the command is `data.frame()`:
+```{r} 
+# creating vectors
+fruit = c('apples', 'oranges', 'cherries', 'bananas')
+calories = c(88, 45, 88, 112)
+vitamin.c = c(8.4, 51.1, 9.8, 11)
+# creating a data frame from the vectors
+nutrition.df = data.frame(type = fruit, calories=calories, vitamin.c = vitamin.c)
+nutrition.df
+```
+* Note that we can choose the column names to be the same or different than the vectors themselves
+```{r}
+# create one more data frame
+fiber.df = data.frame(type = fruit, fiber = c(4.4, 2.3, 2.9, 3.3))
+fiber.df
+```
+
+
+#### Combining data frames
+
+*`merge()`*
+
+* `merge()` can be used to combine two data frames. Let's merge `nutrition.df` and `fiber.df`:
+```{r}
+# merge by the column "type"
+merged.df = merge(x=nutrition.df, y=fiber.df, by='type', all.x=TRUE)
+merged.df 
+# different way to call it. Same results in this case:
+merged.df = merge(x=nutrition.df, y=fiber.df, by.x = "type", by.y = "type")
+merged.df
+# what if fiber.df had no apples?
+merged.df = merge(x=nutrition.df, y=fiber.df[2:4, ], by='type', all.x=TRUE)
+merged.df
+# what if all.x = FALSE (the default)?
+merged.df = merge(x=nutrition.df, y=fiber.df[2:4, ], by='type')
+merged.df
+# (all.y is similar)
+```
+* Note that `merge()` may change the ordering of the rows
+* there's also a `join()` command which does similar things in the `plyr` package. See `?join` if interested.
+
+*`rbind()`*
+
+* `rbind()` takes two or more data frames and stacks them "on top of each other". So if X has 5 rows, and Y has 7 rows, then the `rbind(X,Y)` will have 12 rows.
+```{r}
+# break nutrition.df into two smaller data frames, 2 rows each
+df.1 = nutrition.df[1:2, ]
+df.2 = nutrition.df[3:4, ]
+# use rbind() to put them together again (note the ordering)
+df.combined = rbind(df.2, df.1)
+df.combined
+```
+
+* Note that the data frames need to have the same columns and column names.
+
+*`cbind()`*
+
+*`cbind()` is like `rbind()`, except that we are combining multiple columns, instead of multiple rows. So if X has 3 columns and Y has 2 columns, `cbind(X,Y)` will have 5 columns.
+```{r}
+# break merged.df into two smaller data frames, 1-2 columns each
+df.1 = merged.df[, 1:2]
+df.2 = merged.df[, 4]
+# use cbind() to combine them
+df.combined = cbind(df.1, df.2)
+df.combined
+```
+
+* Note that the data frames need to have to same number of rows.
+
+
+#### Reordering data frame rows
+
+* `arrange()` can be used to reorder the rows of a data frame.
+```{r}
+# arrange by calories
+arrange(merged.df, calories)
+# arrange in decreasing order by calories
+arrange(merged.df, desc(calories))
+# arrange by calories and then by fiber
+arrange(merged.df, calories, fiber)
+```
+
+

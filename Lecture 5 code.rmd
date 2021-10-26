@@ -1,0 +1,524 @@
+<style>
+  .reveal pre {
+    font-size: 13pt;
+  }
+  .reveal section p {
+    font-size: 32pt;
+  }
+  .reveal div {
+    font-size: 30pt;
+  }
+  .reveal h3 {
+    color: #484848;
+    font-weight: 150%;
+  }
+</style>
+
+Lecture 5: Averages
+====
+author: CPECGM2
+font-family: Helvetica
+autosize: false
+width:1440
+height:900
+
+
+R: the `list` variable type
+=========
+
+In R, every function returns exactly one object. 
+
+To get around this limitation, often a function will return one object which is a `list` of different objects.
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center"}
+# what is the probability of 371 heads in 500 coin flips?
+test.result = binom.test(x = 261, n = 500, p = 0.5)
+# what are the objects in the list?
+names(test.result)
+# use the $ notation to extract an object
+test.result$p.value 
+```
+
+
+
+Agenda
+=======
+
+* Review: hypothesis tests and p-values for binomial random varaibles
+* Visualizing averages and sample sizes: US county statistics
+
+**Important:** Read "percentages.pdf" first!
+
+Main idea: When comparing averages, you should consider the **sample size**
+
+We'll use the following packages
+```{r fig.width=6, fig.height=4, dpi=70, cache=TRUE, fig.align="center"}
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(knitr)
+```
+
+
+Binomial Random Variables
+==============
+
+In many settings, such as:
+
+* how many deaths from cancer in different counties
+* how many arrests in different counties 
+* how many successful sales in different months
+* etc, 
+
+We are interested in identifying abnormal or unusual occurences
+.
+Simplest way to account for sample variance: model as a **binomial random variable**
+
+
+
+The Binomial Random Variable
+============
+
+A **Binomial(n,p)** random variable is:
+
+The number of successes in **n** independent trials, if each trial has a **p** percent chance of succeeding.
+
+> Parameters: **n**, **p**
+> 
+> Expected value: **np**  
+>
+> Standard deviation: **sqrt(np(1-p))**
+
+
+**idea:** **n** tosses of a biased coin, which comes up heads with probability **p**.
+
+
+
+p-values
+==========
+
+**null hypothesis:** Suppose normally, 1 out of every 2 customers leave without buying anything. 
+
+Today, **261** out of **500** customers did so. 
+
+Is this business as usual, or is something different going on?
+
+```{r fig.width=6, fig.height=4, dpi=70, cache=TRUE, fig.align="center"}
+# do a binomial test: how likely is it to get >= 261/500 heads if the coin is 50/50?
+test.result = binom.test(x=261, n = 500, p = 0.5)
+# extract the p.value from the output
+test.result
+```
+
+This isn't so unusual for a **Binomial(n=500, p=0.5)** random variable.
+
+==========
+
+What if **371** of **500** customers did so?
+
+This would be **very unusual** for a **Binomial(n=500, p=0.5)** random variable. We can infer that **p** is greater than 0.5.
+
+```{r fig.width=6, fig.height=4, dpi=70, cache=TRUE, fig.align="center"}
+binom.test(x = 371, n = 500, p = 0.5, alternative = 'greater')$p.value
+```
+
+So, not business as usual. 
+
+Difference could be benign (weekend/weekday effects), or serious (new competitor? worse customer service?) 
+
+Rule of thumb for p-values
+=======
+For many random variables, the probabilities approximately follow:
+
+st. deviations above the mean | approximate p-value
+---------------|------------------------
+more than 1 sd | 30%
+more than 2 sd | 5%
+more than 3 sd | less than 1%
+
+**Example:** A binomial(n=500, p=.5) random variable has 
+
+Expectation: **250**    
+Std. deviation: **11.2** 
+
+So **371** would be **10.8 standard deviations** above the mean. Very unlikely to occur.
+
+Terminology
+========
+
+**residual**: difference between actual data and your null hypothesis  
+
+**standardized residual**: normalize by the standard deviation given by the null hypothesis
+
+**Example**:  
+Null hypothesis: **binomial(n=500, p=.05)**  
+Actual observation: **371**
+
+Residual: 371-250 = 121  
+Standardized residual: 121 / 11.2 = 10.8 std.devs
+
+Residuals are very important in this course. They show where your model or hypothesis could be wrong.
+
+Silly Example
+==========
+
+Suppose a magician has 4 coins. Three of them are fair, but the other is a trick coin, biased towards heads. You get to toss each one a number of times and record the outcomes
+
+coin |  number of tosses | number of heads | percent
+-----|-------------------|--------------|-----
+A |  3 | 2 | 66%
+B |  10 | 7 | 70%
+C |  50 | 32 | 64%
+D |  90 | 50 | 55%
+
+The magician asks to you pick the coin whose **p** is greater than 1/2. But if you guess wrong, he'll make you disappear!
+
+For which coin is the evidence most in favor of **p** > 0.5?
+
+
+Silly Example
+==========
+
+Suppose a magician has 3 biased coins. You get to toss each one a number of times and record the outcomes
+
+coin |  number of tosses | number of heads | percent | p-val that **p less than 0.5**
+-----|-------------------|--------------|-------|-----
+A |  3 | 2 | 66% | 0.50
+B |  10 | 7 | 70% | 0.17
+C |  50 | 32 | 64% | 0.03
+D |  90 | 50 | 55% | 0.17
+
+It would be pretty unlikely to get 32 heads in 50 tries if **p** was 1/2 or less.
+
+Trick question: if you pick **C**, what is your chance of disappearing?
+
+Silly Example
+==========
+
+Suppose a magician has 3 biased coins. You get to toss each one a number of times and record the outcomes
+
+coin |  number of tosses | number of heads | percent | p-val that **p less than 0.5**
+-----|-------------------|--------------|-------|-----
+A |  3 | 2 | 66% | 0.50
+B |  10 | 7 | 70% | 0.17
+C |  50 | 32 | 64% | 0.03
+D |  90 | 50 | 55% | 0.17
+
+It would be pretty unlikely to get 32 heads in 50 tries if **p** was 1/2 or less.
+
+Trick question: if you pick **C**, what is your chance of disappearing?
+
+Not enough information to answer. 
+
+Saying that the p-value is 0.03% is just a way of giving a number to the strength of the evidence. It's **not** logically the same as saying you have a 0.03% chance of disappearing if you pick C.
+
+
+Real Example: US counties in 2007
+===========
+
+`county_data.csv` has the following columns
+
+* `name`: the county name
+* `STCOU`: county code. Matches the column `fips` in the data frame `county.gg`. 
+* `population`, `violent.crimes`, `births`, `deaths`, `infant.deaths`: the number of each respective category in each county, in the year 2007.
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center"}
+# load the CSV file
+county.data <- read.csv(file = 'county_data.csv')
+binomial.data <- read.csv(file = 'binomial_data.csv')
+load('county_ggplot.rda')
+```
+
+
+===========
+
+Let's convert some of the columns to per capita rates:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=TRUE}
+# compute per capita rates for each column
+county.data = mutate(county.data, 
+        crimes.per.capita = violent.crimes / population, 
+        births.per.capita = births / population,
+        deaths.per.capita = deaths / population,
+        infant.deaths.per.capita = infant.deaths / population)
+head(county.data)
+```
+
+To make choropleth plots, we will need to `merge()` the `county.gg` and `county.data` into a single data frame:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=TRUE}
+# combine the county.data with the map data
+county.mapdata = merge(county.gg, county.data, by.x = 'fips', by.y='STCOU')
+# merge can change the order of the rows. make sure they are in the correct order:
+county.mapdata = arrange(county.mapdata, order)
+```
+
+
+Deaths in US counties
+=======
+
+```{r fig.width=10, fig.height=5, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# draw the map and fill color by deaths.per.capita
+ggplot(data = county.mapdata, 
+       mapping = aes(x = long, y = lat, group = group, fill = deaths.per.capita)) + 
+  geom_polygon(color='white', size=.1) + 
+  scale_fill_gradient2(low = 'blue', mid = 'grey', high = 'red', midpoint = .01) + 
+  coord_map() + 
+  labs(title = 'deaths per capita, US counties')
+```
+
+There are patches of counties with high death rates, such as a vertical band of midwest counties. What is going on here?
+
+========
+
+It turns out these counties also have small populations:
+
+```{r fig.width=10, fig.height=5, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# draw the map and fill color by population. Note the band of low population counties in the midwest
+# Note: we put population on a log scale
+ggplot(data = county.mapdata, mapping = aes(x = long, y = lat, group = group, fill = population)) + 
+  geom_polygon(color='white', size=.1) + 
+  scale_fill_gradient2(low = 'blue', mid = 'grey', high = 'red', trans='log', midpoint = log(12000)) + 
+  coord_map() + 
+  labs(title = 'Population, US counties')
+```
+
+We can see that the midwest counties with high death rates also tended to have low populations.
+
+=======
+
+Here is a list of the counties with the top ten death rates:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# arrange the counties in order of death rate
+county.data = arrange(county.data, desc(deaths.per.capita))
+# show the first 10 rows as a table
+kable(subset(county.data[1:10, ], select = c("name", "population", "deaths", "deaths.per.capita")), digits = 3)
+```
+
+They all have low populations. Some of them may have just had bad years...
+
+Let's make the question well-posed
+========
+
+**Setup:** 
+
+Let's suppose that the number of deaths in each county is a **binomial random variable**, with **n = population** and some intrinsic risk of death **p**.
+
+**Question:** 
+
+For which counties is the evidence strongest that their **p** is above 0.008, the US per capita death rate?
+
+Computing the expected deaths and residuals
+======
+
+Instead of computing the exact p-value, let's use the standardized residuals as a proxy:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center"}
+# compute the nationwide per capita rate:
+US.deaths = sum(county.data$deaths) / sum(county.data$population)
+# compute the expected and residual values under the null hypothesis:
+county.augmented = mutate(county.data, 
+    expected.deaths = population * US.deaths, 
+    st.dev.deaths = sqrt(expected.deaths*(1 - US.deaths)),
+    residual = deaths - expected.deaths,
+    std.residual = residual / st.dev.deaths)
+sum(county.augmented$std.residual) 
+```
+
+Which counties had the largest std. residuals?
+==========
+
+The top ten largest standardized residuals:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# arrange the counties by standardized residuals
+county.augmented = arrange(county.augmented, desc(std.residual))
+# make an HTML table
+kable(county.augmented[1:10, c("name", "population", "deaths", "deaths.per.capita", "std.residual")], digits=3)
+```
+
+A lot of them are in Florida, which happens to be a popular destination among retirees who tend to be older.
+
+
+=========
+
+```{r fig.width=10, fig.height=5, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# merge the county.augmented and county.gg data frames, and arrange them by the order column
+county.mapdata = merge(county.gg, county.augmented, by.x = 'fips', by.y='STCOU')
+county.mapdata = arrange(county.mapdata, order)
+# make a map, with fill = standardized residuals
+ggplot(data = county.mapdata, mapping=aes(x=long, y=lat, group = group, fill = std.residual)) + 
+  geom_polygon() + scale_fill_gradient2(low = 'blue', mid = 'grey', high = 'red', midpoint = 0) + 
+  coord_map() + 
+  labs(title='Std. Residual Deaths (assuming null hypothesis), \n US counties')
+```
+
+* Florida has a lot of red. Strong evidence that their **p** exceeds 0.008
+* Some major cities are blue. Perhaps these cities are attracting large numbers of younger people?
+
+Small counties have higher variance
+============
+
+The per capita rate varies more for small counties:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# scatter plot of per capita rates vs population
+ggplot(data = county.data, mapping=aes(x = log(population), y = deaths.per.capita)) + geom_point(size=1) 
+```
+
+Note that we took a log transform of the `x` axis because some of the counties have very large populations. (try it without the log first!)
+
+Could all counties have the same intrinsic p?
+===========
+
+If every county had the national rate,  < 1 percent of counties should be more than 3 st.dev from the mean:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# plot the per capita rates vs population, with a reference line for outliers
+ggplot(data = county.augmented, mapping=aes(x = log(population), y = deaths.per.capita)) + 
+  geom_point(size=1) + 
+  geom_line(mapping=aes(y = (expected.deaths + 3*st.dev.deaths)/population), color='green') + 
+  labs(title='deaths per capita vs population \n green line: exp + 3 std dev (under null)')
+```
+
+The number of counties above the green line is much more than 1 percent. Reject the null. 
+
+There are county-specific factors affecting the death rate!
+
+
+
+Infant deaths in US counties
+=========
+
+The highest observed per capita rates are all small counties
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# order the rows by infant deaths per capita
+county.data = arrange(county.data, desc(infant.deaths.per.capita))
+# print the first 10 rows
+kable(subset(county.data[1:10, ], select = c("name", "population", "infant.deaths", "infant.deaths.per.capita")), digits=3)
+```
+
+Should this be taken as evidence that these counties have higher risks of infant mortality?
+
+
+
+Look at standardized residuals instead
+=====
+
+Suppose the number of infant deaths for each county is a binomial random variable.
+
+For which counties is the evidence strongest that their intrinsic **p** is greater than 0.0001, the US average?
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center"}
+# how many infant deaths per capita in the US?
+US.infant.deaths = sum(county.data$infant.deaths) / sum(county.data$population)
+
+# compute the expected and residual counts under a simple null hypothesis
+county.augmented = mutate(county.data, 
+    expected.infant.deaths = population * US.infant.deaths, 
+    st.dev.deaths = sqrt(expected.infant.deaths*(1-US.infant.deaths)),
+    residual = infant.deaths - expected.infant.deaths,
+    std.residual = residual / st.dev.deaths)
+```
+
+
+======
+
+Top ten counties in terms of the standardized resisdual
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# order the rows by the standardized residual
+county.data = arrange(county.augmented, desc(std.residual))
+# make an HTML table
+kable(subset(county.data[1:10, ], select = c("name", "population", "infant.deaths", "infant.deaths.per.capita", "std.residual")), digits=5)
+```
+
+=====
+
+```{r fig.width=10, fig.height=5, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# merge the county.augmented data with the map data, and re-order the rows
+county.mapdata = merge(county.gg, county.augmented, by.x = 'fips', by.y='STCOU')
+county.mapdata = arrange(county.mapdata, order)
+# make a map with fill=standardized residuals
+ggplot(data = county.mapdata, mapping=aes(x=long, y=lat, group = group, fill = std.residual)) + 
+  geom_polygon() + 
+  scale_fill_gradient2(low = 'blue', mid = 'grey', high = 'red', midpoint = 0) + 
+  coord_map() + 
+  labs(title = 'Std. Residual Infant Deaths, US Counties')
+```
+
+Regional trends seem to be visible
+
+Could all counties have the same intrinsic p?
+========
+
+If every county had the national rate, <1 percent of counties should be more than 3 st. dev. from the mean:
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# plot the number of infant deaths vs population, with a reference line for outliers
+ggplot(data = county.augmented, mapping=aes(x = log(population), y = infant.deaths.per.capita)) + geom_point(size=1) + geom_line(mapping=aes(y = (expected.infant.deaths + 3*st.dev.deaths)/population), color='green') + labs(title='deaths per capita vs population \n green line: exp + 3 std dev (under null)')
+```
+
+About 3.7% of the population. We can reject the null -- there is some county-specific factor causing more infant deaths per capita.
+
+However, much closer to the null than the previous example!
+
+
+Discussion
+=======
+
+1. If you are looking for the most extreme values, **don't compare per capita rates or averages**. This will just give you the smallest groups. 
+
+2. The simplest null hypothesis: all counties have the same risk factor
+
+3. If this null is correct, less than 1% of counties should have a standardized residual above 3. 
+
+4. If not, there is some additional factor affecting the outcomes. 
+
+5. Choose a risk factor as the null and look for counties which reject it. Alternately, you can use confidence intervals (next lecture!)
+
+
+Discussion, cont:
+=========
+
+Outliers and extreme values can mean different things in your analysis:
+
+1) The outliers were so large and numerous that the null hypothesis was clearly wrong.
+
+Look at the outliers and try to learn what makes them different from other counties.
+
+2) They occur about as often as you might expect under the null. 
+
+In this case, they might just be due to random chance. 
+
+
+Bonus: A common fix that doesn't really work
+=======
+
+What if we only look at counties with at least 10K people?
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE}
+# keep only counties with population <= 10000
+county.subset = subset(county.data, subset = population >= 10000)
+# order these counties by the death rate
+county.subset = arrange(county.subset, desc(deaths.per.capita))
+# make a new table of the top 10 countes by death rate (for those with pop >= 10000)
+kable(subset(county.subset[1:10, ], select = c("name", "population", "deaths", "deaths.per.capita")), digits = 3)
+```
+
+The highest rates are mostly counties with about 10K people now. 
+
+So the low population counties still have the highest rates.
+
+
+```{r fig.width=6, fig.height=3, dpi=150, cache=TRUE, fig.align="center", echo=FALSE, eval=FALSE}
+# plot the per capita infant deaths vs population, with a reference line for outliers
+ggplot(data = county.augmented, mapping=aes(x = log(population), y = infant.deaths.per.capita)) + geom_point(size=1) + geom_line(mapping=aes(y = (expected.infant.deaths + 3*st.dev.deaths)/population), color='green') + labs(title='deaths per capita vs population \n green line: exp + 3 std dev (under null)')
+
+# plot the standardized residuals vs population, with a reference line for outliers
+ggplot(data = county.augmented, mapping=aes(x = log(population), y = std.residual)) + geom_point(size=1) + geom_abline(slope=0, intercept=3, color='green')
+```
+
+

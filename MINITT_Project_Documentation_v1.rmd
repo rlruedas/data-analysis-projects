@@ -1,0 +1,188 @@
+---
+title: "Mini Project: NLSCHOOLS DATASET"
+author: "MINITT - Pimentel D.H., Ruedas R.L., and Cayco N.A."
+date: "June 19, 2021"
+output: html_document
+---
+
+## Introduction
+For the given dataset of the **nlschools**, it clearly enumerated the different factors affecting the language test scores of the students. Among those factors are the IQ levels or the intelligent quotient of the students in which it measures the intellectual abilities and potential of an individual, indicated are the class id and the class size which could also affect the performance of the students in a way that population affects the overall impact for the environment as to conducting the test, another thing is the socio-economic status that could influence the capabilities of the students, the quality and availability of resources. And lastly for the COMB which technically refers to describing whether students were taught in a multi-grade class. So generally, this study aims to identify the effect of each factor for the performance of the students in the language test score and their relationship to each other.
+
+## Analysis
+**Preliminaries:**
+For the analysis of the dataset given, indicated here is the ‘lang’ which stands for the language test scores, IQ, the intelligent quotient of each individual, class, for the class ID, GS, or the general size or class size, SES, or the socio economic status of the students and COMB which describes whether students were taught in a multi–grade class. The goal is to observe the relationship of these variables to the language test scores of the students. Specifically, the study aims to answer the following questions:
+
+1. Does the number of students in each class lessen the verbal IQ or test result scores of each student?
+2. Do the multi-graded classes affect the verbal IQ of students? Compare the verbal IQ of a non-multigrade class and a multigrade class.
+3. Does Social-Economic Status Affect Performance on Language Test Scores?
+4. Does Multi-grade type class affect the performance of students on Language test scores?
+5. Which class has the greatest number of low language test scores? (Below mean language test scores)
+6. Do the subjective perceptions of social status and social class affect the performance and intelligence quotient of the
+7. What are the conclusions we can reach from the correlation of students' intelligence quotient and socioeconomic status
+8. What is the predicted score of students based on their IQ using regression model?
+
+```{r}
+# Load Libary
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(reshape2)
+library(knitr)
+library(binom)
+library(scales)
+library(MASS)
+library(plotrix)
+
+# Load Data
+data(nlschools, package = 'MASS')
+
+# Explore Data set at show basic informations, summary, variables in the nlschools dataset
+head(nlschools)
+summary(nlschools)
+str(nlschools)
+```
+
+***Question 1:*** Does the number of students in each class lessen the verbal IQ or test result scores of each student?
+
+#### Q1 Methods:
+We first find the number of data in all of the variables by running the **length()** algorithm on the dataset nlschools. Form there using the output of the length, we then used the **ddply()** function from the library of plyr to get the average and summarized data of Test Scores and IQ. This is grouped by Class size and rearrange into descending order using **arrange()** and **desc()** function. At this point, we already have the data needed for the problem. We used **kable()** and **ggplot()** function to print all the outputs of the created data frame. The plot used 2 **geom_line()** function from the library of ggplot2, one for average IQ and the other for average test scores.
+
+#### Q1 Results:
+* Based on the results, the table printed the top 10 highest class size and the calculated average IQ and test scores on the data frame. And the highest class size of *39* students only have and average IQ of *6%* compared to *32* students with *128* average IQ.
+* For the plot, output shows two types of line with different color. Red line assigned for the average of test scores and blue line for average IQ.
+* The results of the plot proves that, there is chance that the number of students per class may lessen the test results or IQ of the students. This may be because of overloading in a class or too much noise is being produced within the class, which may result of losing focus on the test.
+* And shown that the recommended number of students per class is 25 - 32, which is the highest average test scores and IQ.
+
+```{r fig.align='center'}
+#Get the percentage and summarize by class size
+total = length(nlschools$lang)
+sum.gs = ddply(nlschools, "GS", summarize, avg.test = sum(lang)/total*100 , avg.iq = sum(IQ)/total*100)
+#Make the data descending order
+sum.gs = arrange(sum.gs, desc(GS))
+#Create a table for iq and test score average by top 10 highest class size
+kable(head(sum.gs, 10))
+#Plot the table using geom_line for both test scores and iq
+ggplot(data = sum.gs) + geom_line(aes(x=GS, y=avg.iq, colour="Average IQ")) + geom_line(aes(x=GS, y=avg.test, colour="Average Test Results")) + scale_colour_manual("", values=c("Average IQ"="blue","Average Test Results"="red")) + labs(title = 'Average IQ and Test Scores by Class Size', x = 'Class Size', y = 'Average') + theme(plot.title = element_text(hjust = 0.5))
+```
+
+***Question 2:*** Do the multi-graded classes affect the verbal IQ of students? Compare the verbal IQ of a non-multigrade class and a multigrade class.
+
+#### Q2 Methods:
+We first created another data frame that will only find the average IQ and the conditions of the non-multigrade and multigrade class. Using the same variable **total** from the question number 1, and apply **ddpy()** function to find the summarize of COMB which is 1 or 0 in the dataset. 1 is considered to be a multigrade class and 0 for non-multigrade class. We used **pie3D()** plot from plotrix library to present the difference of the non-multi and multi grade class. Since there is only two conditions in terms of the ***COMB*** variable, pie chart is the best to present the difference from a whole pie. 
+There are needed labels and slices size, so we used the **c()** function to combine it with pie3D function.
+
+#### Q2 Results:
+* Based on the results, the pie chart were able to present the size difference of average IQ for studets who are in a non-multigrade and multigrade class. There is also a labels and color for each category. Red for non-multigrade class and blue for multigrade class.
+* The 3D pie chart also shows the percentage size from *100%* value, *73%* for non-multigrade class and *27%* for multigrade class.
+* The plot sizes and percentage proves that, there is a small chance that the students who are in a multigrade class affects their verbal IQ because of having different grade level within the class.
+
+```{r fig.align='center'}
+#Create data frame that summarize the average IQ by COMB variable
+sum.comb = ddply(nlschools, "COMB", summarize, avg.iq = sum(IQ)/total*100)
+#Get percentage for each slice in the 3D pie
+per.iq = sum(sum.comb$avg.iq)
+x = (sum.comb$avg.iq / per.iq) * 100
+#Size of slice for the pie chart by calculated average IQ
+slices = c(sum.comb$avg.iq)
+#Indicate labels for non-multi and multi grade class.
+lbls = c("Non-multigrade 73%", "Multigrade 27%")
+#Plot using 3D pie chart with explosion level of 0.05
+pie3D(slices,labels=lbls,explode=0.05, main="Average IQ of Non-multigrade and Multigrade Classes")
+```
+
+***Question 3:*** Does Social-Economic Status Affect Performance on Language Test Scores?
+
+#### Q3 Methods:
+* We run scatter plots for variables SES and lang in order to show the effect between the two vairables. Then, we add geom smooth in order to fully see the patterns when the two variables are plotted.
+
+#### Q3 Results:
+* Based on the plot, we can see that the higher the socio-economic status the better the language test score is. It means that socio-economic status can affect the test scores of the students. 
+
+```{r fig.align='center'}
+ggplot(data = nlschools, mapping = aes(x=SES, y=lang)) + 
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  labs(x='Socio-Economic Status', y='Language Test Score', title = 'Socio-Economic Status vs. Language Test Score') + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+***Question 4:*** Does Multi-grade type class affect the performance of students on Language test scores? 
+
+#### Q4 Methods: 
+We run first the ddply method in order to summarize the specific variables to be used later in plotting.
+* In using the ddply, we summarize the average of language test score depending on each multi grade type class.
+* Then ggplot the summarize result to show the effect of Multi-Grade type class.
+
+#### Q4 Results:
+* Based on the plot, multi grade class type shows slightly low average score that the non multi grade type class.
+
+```{r fig.align='center'}
+# Summarize the total number of language test score with multi grade type class
+count = ddply(nlschools, "COMB", summarize, ave = mean(lang))
+count
+# Plot the result
+ggplot(count, mapping = aes(x=COMB, y =  ave, fill = COMB)) + geom_bar(stat = "Identity") + 
+  labs(x='Class ID', y='Total Class Count', title = 'Language Test Score vs Multi-Grade Type Class') + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+***Question 5:*** Which class has the greatest number of low language test scores? (Below mean language test scores)
+
+#### Q5 Methods:
+* We first average the overall language test scores then we used this value as the basis to determine class ID below this threshold.
+* Then use the ddply library to summarize the total number of language test scores below 40 on each class ID.
+* Arrange the new data frame into top 10 to show which class has the most number of low language test score.
+* Plot the result to show aesthetically the difference of the top 10 class ID.
+
+#### Q5 Results:
+* Based on the result, the class ID "15580" has the most number of lowest language test score in the whole dataset.
+
+
+```{r fig.align='center'}
+#Get the average score of all class 
+ave.lang.test.score = mean(nlschools$lang)
+#Count the total number of class which got less than the mean average language test score
+count = ddply(nlschools, "class", summarize, total = length(lang <= 40))
+arrange = count %>% arrange(desc(total)) %>% slice(1:10) 
+arrange
+#plot the 
+ggplot(arrange, mapping = aes(x=reorder(class, total), y = total, fill = class)) + geom_bar(stat="identity") + 
+  labs(x='Class ID', y='Total Class Count', title = 'Top 10 Class which Got the Lowest Language Test Scores') + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+***Question 6:*** Do the subjective perceptions of social status and social class affect the performance and intelligence quotient of the student?
+
+#### Q6 Methods:
+We limit the plot from class 180 to 3880 since there is alot of classes and we only want to find the difference students performance. Using the *16* classes we each given them plots to show the outputs of each students, by their economic status. We used **ggplot()** and **facet_wrap()** function of ggplot2 library with x-axis of verbal IQ score and y-axis of Test Scores. Using **geom_point()** to print each point of social economic data of each students from each classes.
+
+#### Q6 Results:
+* Based on the results, there *16* number of plots printed designated to each class from *180 to 3880*. And printed the Economic status of the students in each plot.
+* You can see that there are different number of points in each plots since each class have different number of students or some students did not take the test.
+* The plot proves that, the performance of the class *180 and 280* has lower scores compared to the other classes. And most of the classes falls between *30 - 40* test scores and have *30* above IQ.
+* The results also proves that, there is a chance that the students performance may lessen due to the economic status of the family.
+
+```{r fig.align='center'}
+#Plot the lang and IQ by SES using facet wrap plot
+ggplot(data=nlschools[1:253,], mapping=aes(x=IQ, y=lang)) + geom_point(aes(x=lang ,y=SES)) + facet_wrap("class") + labs(title = 'Students Performance under Class 180 - 3880', x = 'Verbal IQ', y = 'Language Scores') + theme(plot.title = element_text(hjust = 0.5))
+```
+
+***Question 7:*** What are the conclusions we can reach from the correlation of students' intelligence quotient and socioeconomic status?
+
+#### Q7 Methods:
+We chose variables IQ and SES, and show the correlation between the two variables by scattering plot. Then we determine how many panels would yield to the best result showing a correlation between the two variables.
+
+#### Q7 Results:
+* Looking at the panels the, students with low SES tend to have less IQ during the sruvey. The students with high SES tend to show flattened line indicating their IQ is average to high.
+
+```{r fig.align='center'}
+coplot(IQ ~ SES | SES, data = nlschools, number = 4,  panel = panel.smooth, 
+       rows = 1, overlap = .7, cex = .7, span = .3, lwd = 2)
+```
+
+## Conclusions
+* Socio-economic status were associated with higher language test scores.
+* Multi-grade type classes tended to perform lower in language test scores.
+* The class "15580" students show low performance during the test, the results shown can help the school assess the classes in what to do so they could perform well on the next language test.  

@@ -1,0 +1,385 @@
+<style>
+  .reveal pre {
+    font-size: 13pt;
+  }
+  .reveal section p {
+    font-size: 32pt;
+  }
+  .reveal div {
+    font-size: 30pt;
+  }
+  .reveal h3 {
+    color: #484848;
+    font-weight: 150%;
+  }
+</style>
+
+Lecture 4: Graphics part 2
+====
+author: CPECGM2
+font-family: Helvetica
+autosize: false
+width:1440
+height:900
+
+
+Agenda
+=====
+
+* customizing labels, font size, etc.
+* `stat_summary` for error bars and parallel coordinates with error bars
+* making choropleth maps with `geom_polygon`
+
+Here are the libraries we will need
+```{r fig.width=6, fig.height=4, dpi=70, fig.align='center', cache=TRUE}
+library(plyr)
+library(ggplot2)
+library(reshape2)
+```
+
+
+Customizing appearances
+======
+
+Make a table of avg `cty` mileage:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+mpg.means = ddply(mpg, 'class', summarize, avg.cty = mean(cty))
+mpg.means
+```
+
+=====
+
+Our basic plot:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+ggplot(data = mpg.means, mapping=aes(x=class, y = avg.cty, group=1)) + geom_bar(stat='identity')
+```
+
+Reording the factor levels
+=========
+
+Bad: `class` levels are ordered alphabetically by default
+
+`reorder()`: reorders the levels of a factor
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# check the order of the levels
+levels(mpg.means$class)
+# the reorder command changes the ordering of the vehicle classes
+mpg.means$class = with(mpg.means, reorder(class, avg.cty, mean))
+# what is the new order of the levels?
+levels(mpg.means$class)
+```
+
+=======
+
+Here are the arguments for `reorder()`:
+
+argument of `reorder` | description
+---------|------------
+`x` (first argument) | The vector that you want reordered
+`X` (second argument) | A numeric vector that determines the ordering of `x`
+`FUN=mean` (third argument) | If multiple values in `X` are associated with a single factor level, then take their average (or `max` or `min` if you prefer)
+
+=========
+
+Using `reorder()` makes the plot easier to read:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+mpg.plot = ggplot(data = mpg.means, mapping=aes(x=class, y = avg.cty, group=1)) + geom_bar(stat='identity')
+mpg.plot
+```
+
+Manually ordering and removing categorical levels in a plot
+=========
+
+`scale_x_discrete()`: manually choose which levels to display and their ordering (for discrete variables). 
+
+```{r fig.width=6, fig.height=2.5, dpi=150, fig.align='center', cache=TRUE}
+# Select 4 classes and their ordering
+mpg.plot + scale_x_discrete(limits = c('compact', 'midsize', 'suv', 'pickup'), labels = c('Compact', 'Midsize', 'SUV', 'Truck'))
+```
+
+`scale_y_discrete()`: same thing but for a discrete y-axis.
+
+Labeling the axes and title
+========
+
+Use `labs()`:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+mpg.plot = mpg.plot + labs(x = '', y = 'Miles Per Gallon', title='City Mileage by Class') 
+mpg.plot
+```
+
+=========
+
+For long labels, we can use the special character `\n` to denote a line break:
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+mpg.plot + labs(title='Average City Mileage \n (Grouped by Class)') 
+```
+
+Changing the overall font
+==========
+
+`theme()`: controls a lot of things, including text. You should never have tiny unreadable text in a slideshow!
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# change the font size to 22
+mpg.plot + theme(text = element_text(size=22))
+```
+
+=======
+
+```{r fig.width=6, fig.height=4, dpi=150, fig.align='center', cache=TRUE}
+# change the font size to 22, and rotate the x axis categories
+mpg.plot + theme(text = element_text(size=22), axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+```
+
+`vjust` and `hjust`: vertical and horizontal justification
+
+Using `cut` to create new discrete variables
+=======
+
+Bar charts and facets require discrete variables. 
+
+If you want to facet a continuous variable, use `cut` or `cut_number` to create discrete levels.
+
+```{r fig.width=6, fig.height=5, dpi=150, fig.align='center', cache=TRUE, eval=FALSE}
+# make discrete levels from hwy 
+mpg = mutate(mpg, hwy.cat = cut_number(hwy, n = 4))
+# reorder the classes for nicer plot
+mpg$class = with(mpg, reorder(class, hwy, mean))
+# how many records in each class, for different hwy levels?
+ggplot(data = mpg, mapping=aes(x = class)) + geom_bar() + facet_wrap('hwy.cat', ncol=1) 
+```
+
+=======
+
+Here is the plot:
+
+```{r fig.width=6, fig.height=5, dpi=150, fig.align='center', cache=TRUE, echo=FALSE}
+# make discrete levels from hwy 
+mpg = mutate(mpg, hwy.cat = cut_number(hwy, n = 4))
+# reorder the classes for nicer plot
+mpg$class = with(mpg, reorder(class, hwy, mean))
+# how many records in each class, for different hwy levels?
+ggplot(data = mpg, mapping=aes(x = class)) + geom_bar() + facet_wrap('hwy.cat', ncol=1) 
+```
+
+
+Drawing errorbars
+======
+
+`geom_errorbar()` takes mappings `x`, `ymin`, and `ymax`:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE, echo=FALSE}
+# A small data frame
+small.df = data.frame(treatment = c('Yes', 'No'), ymin = c(5, 2), ymax = c(6, 4), outcome = c(5.5, 3))
+```
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# This plot says: treatment makes something better!
+ggplot(data = small.df, mapping = aes(x = treatment, ymin = ymin, ymax = ymax, color = treatment)) + geom_errorbar(width=.3) + geom_point(mapping=aes(y=outcome), size=4)
+```
+
+Computing errorbars
+========
+
+Here are three different functions for computing error bars:
+
+* `mean_cl_normal()`: computes 95% CIs using a normal approximation (equal to t-test)
+* `mean_cl_boot()`: 95% CIs using a bootstrap
+* `mean_se()`: computes standard errors using normal approximation
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# compute an error bar for the mean of cty in the whole data set:
+errorbar.df = mean_cl_normal(mpg$cty)
+errorbar.df
+```
+
+Plotting summary statistics using `stat_summary`
+=========
+
+`stat_summary()`: a shortcut for `ddply()` + `ggplot()`
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# run mean_cl_normal on each class and draw an errorbar:
+errorbar.plot = ggplot(data = mpg, mapping=aes(x=class, y=hwy)) + stat_summary(fun.data = mean_cl_normal, geom='errorbar', width=.3)
+errorbar.plot
+```
+
+`stat_summary` runs `fun.data` on the data points at each unique `x` value, then uses the output to draw `geom`.
+
+======
+
+Here is another call to `stat_summary()`
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# run mean on each class and draw a point
+errorbar.plot + stat_summary(fun.y = mean, geom='point', size=3)
+```
+
+* Use `fun.data` for functions that compute `y, y.min,` and `y.max` (like `mean_cl_normal()`)
+* Use `fun.y` for functions that only compute `y` (like `mean()`).
+
+========
+
+`geom_pointrange()` shows both the error bars and the mean at once:
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# run mean_cl_norm on each class and draw a pointrange:
+ggplot(data = mpg, mapping=aes(x=class, y=cty)) + stat_summary(fun.data = mean_cl_normal, geom='pointrange')
+```
+
+Drawing polygons
+=========
+
+`geom_polygon` draws a polygon by connecting the points in the order listed.
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# this data frame has 3 rows
+triangle = data.frame(x = c(1, 2, 4), y = c(0, 4, 0))
+# geom polygon connects the points into a triangle
+ggplot(data = triangle, mapping=aes(x = x, y = y)) + geom_polygon()
+```
+
+=======
+
+If you have multiple polygons in a data frame, use the `group` mapping to tell them apart.
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# this data frame has 6 rows
+two.triangles = data.frame(x = c(1, 2, 4, 2, 3, 5), y = c(0, 4, 0, 1, 5, 1), group = c(1,1,1,2,2,2))
+# use group to separate the polygons. use fill to color them.
+ggplot(data = two.triangles, mapping=aes(x = x, y = y, group = group, fill = as.factor(group))) + geom_polygon()
+```
+
+
+Application: maps
+========
+We will use `geom_polygon` next week to look at data on a map
+
+The file `county_ggplot.rda` contains the map coordinates of the states and counties of the US.
+
+```{r fig.width=6, fig.height=4, dpi=70, cache=TRUE, fig.align="center"}
+load('county_ggplot.rda')
+```
+
+Try `View(state.gg)`. There are many columns, the following are useful for `geom_polygon()`:
+
+* `long, lat`: the `x` and `y` mappings
+* `group`: the `group` mapping
+* `order`: use this to re-order the rows if necessary
+
+======
+
+We can draw the map with `geom_polygon()`. 
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# draw a state map
+state.map = ggplot(data = state.gg, mapping=aes(x=long, y=lat, group=group)) + geom_polygon(color='white')
+state.map
+```
+
+========
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# add a map projection
+state.map + coord_map() + labs(x='', y='')
+```
+
+
+Choropleth maps
+==========
+
+A choropleth map is a map where the regions are color coded by some data. 
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE, echo=FALSE}
+# let's create some state level data
+state.data = ddply(state.gg, "region", summarize, data.value = sqrt(mean(long)^2 + 4*mean(lat)^2))
+state.data = mutate(state.data, data.value = data.value + rnorm(49)*20)
+```
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# state.data has an abstract data point for each state, called "data.value"
+head(state.data, n = 3)
+```
+
+We can combine this data frame with the map information using `merge`:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# match each polygon with the state data value, by merging on region:
+state.merged = merge(state.gg, state.data, by = 'region')
+```
+
+
+=====
+
+drawing the map:
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# make the plot, setting fill = data.value
+ggplot(data = state.merged, mapping=aes(x= long, y = lat, fill = data.value, group = group)) + geom_polygon()
+```
+
+See `scale_fill_gradient()` and `scale_fill_gradient2()` in self-study section to customize the color scale.
+
+
+Summary
+=====
+
+The key points were
+
+* Tweaking the appearance
+     + `reorder()`, `scale_x_discrete()`, `labs()`, `theme()`
+* `stat_summary()`, combined with `fun.y=mean` or `fun.data=mean_cl_normal`
+* `geom_polygon()` for maps
+
+Summary (continued)
+======
+
+* Self-study: check out `coord_flip()`, `coord_cartesian()`, and the section on **color**:
+    + `scale_color_brewer()`, `scale_fill_brewer()`: discrete palettes for `color` and `fill`
+    + `scale_color_manual()`, `scale_fill_manual()`: choose your own discrete palette
+    + `scale_color_gradient()`, `scale_color_gradient2()`:  for continuous variables
+    + `scale_fill_gradient()`, `scale_fill_gradient2()`: for continuous variables
+    
+Premade discrete palettes 
+======
+    
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# the Oranges palette (from Cynthia Brewer)
+ggplot(diamonds, aes(x = cut, fill = cut)) + geom_bar() + scale_fill_brewer(palette="Oranges")
+```
+
+Manual discrete palette
+====
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# A manual palette
+ggplot(data=mpg, mapping = aes(x=displ, y=hwy, color=class)) + geom_point() + 
+  scale_color_manual(limits = c('subcompact', 'compact', 'midsize', 'minivan'), values = c('black', 'orange', 'blue', 'grey60'))
+```
+
+Gradient continuous scale
+======
+
+```{r fig.width=6, fig.height=3, dpi=150, fig.align='center', cache=TRUE}
+# a 3-color gradient palette
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy, color = displ)) + geom_point() +
+  scale_color_gradient2(low = 'coral3', high = 'darkcyan', mid = 'grey', midpoint = 4)
+```
+
+
+
+A few guidelines
+======
+
+* Alphabetical ordering is rarely the right choice
+* Avoid stacked bar charts 
+* Use `geom_errorbar()` or `geom_pointrange()` to show tables
+* Usually better to make many small charts instead of one big chart. 
+    * i.e., use `facet_grid=XXX` instead of `color=XXX`
+* Don't visually measure difference between curves!
+* Clean graphics usually best. High "data to ink" ratio.

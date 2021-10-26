@@ -1,0 +1,57 @@
+---
+title: "Mini Project: Data Exploration"
+author: "Humphrey Demoulder Pimentel, Nathaniel Cayco, & Reister Ruedas"
+date: "6/8/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+### Load Libary
+library(ggplot2)
+library(plyr)
+library(reshape2)
+
+### Load Data
+data(nlschools, package = 'MASS')
+```
+
+# Variable Description
+#### This data frame contains 2287 rows and the following columns:
+### lang
+
+Language test score.
+
+### IQ
+
+Verbal IQ.
+
+### class
+
+Class ID.
+
+### GS
+
+Class size: number of eighth-grade pupils recorded in the class (there may be others: see COMB, and some may have been omitted with missing values).
+
+### SES
+
+Social-economic status of pupil's family.
+
+### COMB
+
+Were the pupils taught in a multi-grade class (0/1)? Classes which contained pupils from grades 7 and 8 are coded 1, but only eighth-graders were tested.
+
+
+
+```{r cars}
+# Explore Data set at show basic informations
+head(nlschools)
+# Show summary of the data frame
+summary(nlschools)
+# Show data type of variables in the data fram nlschools
+str(nlschools)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

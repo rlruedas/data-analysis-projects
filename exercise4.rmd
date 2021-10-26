@@ -1,0 +1,111 @@
+---
+title: 95-868 Exercises Day 4
+author: Reister L. Ruedas
+output: html_document
+---
+
+Here are some libraries that you may need. (You may need to install the package `ggplot2movies`)
+```{r}
+library(ggplot2movies) # contains the movies dataset
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(Hmisc)
+
+data("movies")
+movies
+```
+
+You shoud always
+1. when plotting categorical data, consider whether the default ordering is best
+2. label the axes and title, adjust the tick labels so they are legible, etc.
+
+Note: For some reason my version of R started insisting that I use "summarise" (with the British spelling) instead of "summarize". Not sure why!
+
+Problem 1: Look at the `movies` dataset which comes with the `ggplot2movies` package. Make a bar chart that shows how many movies per year are in the data set, for the years 1900-1920.
+
+Note: If you see a message that `binwidth defaulted to range/30`, then you are making a **histogram**, not a bar chart. Convert the `year` column to a factor to prevent this.
+
+You will need to adjust the x axis labels so they are readable.
+
+```{r fig.width=6, fig.height=3, dpi=100, fig.align='center'}
+# Add code and comments
+newData = subset(movies, year >= 1900 & year <= 1920)
+totals = ddply(newData, "year", summarise, no.movies = length(year))
+ggplot(totals, aes(x = year, y = no.movies)) + geom_bar(stat="identity")
+```
+
+Problem 2: Create a dot chart that shows how many movies per year are in the data set, for all years. Use `stat_summary` with `fun.y=length` to do this. 
+
+Compare the difference when the `year` variable is treated as a factor or as a number. Which do you think makes the better plot?
+
+```{r fig.width=6, fig.height=3, dpi=100, fig.align='center'}
+# Add code and comments
+
+total = ddply(movies, "year", summarise, no.movies = length(year))
+total$year <- factor(total$year)
+
+plot = ggplot(total, aes(x=year, y= no.movies )) + stat_summary(fun.x = length, geom = "point")
+plot
+
+
+```
+
+Problem 3: Use the commands `stat_summary` and `geom_pointrange` to show the average ratings per year, +/- 95% confidence intervals, for all years. You can use the command `mean_cl_boot()` to compute the mean and CI's automatically.
+
+```{r fig.width=6, fig.height=3, dpi=100, fig.align='center'}
+# Add code and comments
+ggplot(movies, mapping=aes(x=year, y=rating)) + stat_summary(fun.data = mean_cl_boot, geom='pointrange')
+
+```
+
+Problem 4a: Read the help page for `movies` to understand the meaning of each column. Create a line chart that shows the number of movies per year and per genre (Action, Animation, Comedy, Drama, Documentary, Romance, and Short). If a movie has multiple genres, then it should be counted in each one.
+
+Hint: You can use the `melt()` command and then do a `subset()` to get the data into the form that you need.
+
+```{r fig.width=6, fig.height=3, dpi=100, fig.align='center'}
+# Add code and comments
+
+genre <- rep(NA, ncol(movies)) 
+genre[which(movies$Action == 1)] = "Action"
+genre[which(movies$Animation == 1)] = "Animation"
+genre[which(movies$Comedy == 1)] = "Comedy"
+genre[which(movies$Drama == 1)] = "Drama"
+genre[which(movies$Documentary == 1)] = "Documentary"
+genre[which(movies$Romance == 1)] = "Romance"
+genre[which(movies$Short == 1)] = "Short"
+movies$genre<-as.factor(genre)
+
+ggplot(movies, aes(x=year, y=length(year),colour=genre,group=genre)) + stat_summary(fun.y = length, geom="smooth")
+
+
+
+```
+
+Problem 4b: Remake the same plot, but as a stacked area chart. This is done by using `geom='area'`, and then `position='stack'`, inside the call to stat_summary. (you'll also want to use `fill` instead of `color` most likely)
+
+```{r fig.width=6, fig.height=3, dpi=100, fig.align='center'}
+# Add code and comments
+ggplot(movies, aes(x=year, y=length(year),fill=genre,group=genre)) + stat_summary(fun.y = length, geom="area", position="stack")
+
+```
+
+Problem 5: Choose the 5 most common genres in the data set, and make a line chart showing the average ratings per year and genre. 
+
+```{r fig.width=6, fig.height=3, dpi=100, fig.align='center'}
+# Add code and comments
+
+genre <- rep(NA, ncol(movies)) 
+genre[which(movies$Action == 1)] = "Action"
+genre[which(movies$Animation == 1)] = "Animation"
+genre[which(movies$Comedy == 1)] = "Comedy"
+genre[which(movies$Drama == 1)] = "Drama"
+genre[which(movies$Documentary == 1)] = "Documentary"
+movies$gen<-as.factor(genre)
+movies = subset(movies, !is.na(gen))
+
+ggplot(movies, mapping=aes(x=year, y=rating, col = gen)) + stat_summary(fun.data = mean_cl_boot, geom='smooth')
+
+
+```
+

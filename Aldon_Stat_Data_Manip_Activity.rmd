@@ -1,0 +1,85 @@
+---
+title: 'Activity: Statistical Data Manipulation'
+author: "Reister L. RUedas"
+date: "5/14/2021"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(knitr)
+```
+
+```{r}
+data("mtcars")
+mtcars
+```
+
+Mean - Median - Mode
+
+Mean: Calculated by taking the sum of the values and dividing with the number of values.
+
+Median: Middle most value. The median() function is used in R to calculate.
+
+Mode: Highest number of occurences in a set of data. Unlike mean and median, mode can have both numeric and character data.
+
+```{r}
+#Getting the mean of members in the dataset anime
+mean(mtcars$hp)
+#Getting the median of members in the dataset anime
+median(mtcars$hp)
+#Getting the mode of members in the dataset anime
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+getmode(mtcars$hp)
+```
+Max - Min - Range
+
+Max: Largest value in the dataset
+
+Min: Smallest value in the dataset
+
+Range: Interval difference between the lowest and the highest value
+
+```{r}
+#Getting the max of members in the dataset anime
+max(animes$members)
+#Getting the min of members in the dataset anime
+min(animes$members)
+#Getting the range of members in the dataset anime
+range(animes$members)
+```
+Standard Deviation
+
+  An observation variable that is the square root of its variance.
+
+```{r}
+sd(animes$members)
+```
+P-Value
+  Measures the probability of an observed difference that could have occurred just by random chance.
+
+```{r}
+z <- 12
+x <- 14
+c <- 05
+xbar <- 2
+2*(1 - pnorm(xbar, mean = z, sd = x/sqrt(20)))
+```
+Variance
+  Refers to a statistical measurement of the spread between numbers in a dataset. Variance also measures how far each number in the set is from the mean and from every other number in the set.
+
+```{r}
+var(animes$members)
+```
+Residual
+  Simple linear regression model is the difference between the observed data of the dependent variable y and the fitted values ŷ.
+
+```{r}
+newdata <- lm(mpg ~ wt + cyl, data = mtcars)
+resid(newdata)
+```

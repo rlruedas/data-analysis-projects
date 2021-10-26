@@ -1,0 +1,56 @@
+---
+title: CPECGM2 Exercise 2
+author: Reister L. Ruedas
+output: html_document
+---
+
+**Note:** We will assume that the data file `expenditures_lec2.csv` is in your working directory.
+
+Problem 1: Load the CSV file `expenditures_lec2.csv` into memory, using the command `read.file()` or `read.csv()` as described in lecture. Save the result as a variable.
+```{r}
+# Fill in, with comments added:
+
+expenditures <- read.csv(file = 'expenditures_lec2.csv')
+expenditures
+```
+
+Problem 2: Load the `plyr` library into memory
+```{r}
+# Fill in, with comments added:
+
+library(plyr)
+```
+
+Problem 3: How many households have any missing information in the data frame? Your answer should display in the knitted HTML file.
+```{r}
+# Fill in, with comments added:
+expenditures = subset(expenditures, subset = is.na(population.size))
+summarize(expenditures, n.households = length(population.size))
+```
+
+Problem 4: What is the average age of the survey respondents in the Midwest, Northeast, South, and West regions? Show your result in the knitted HTML file. 
+
+```{r}
+# Fill in, with comments added:
+expenditures = read.table(file='expenditures_lec2.csv', header=T, sep=',')
+ddply(expenditures, "region", summarize, avg.age.respondent = mean(age.respondent))
+
+```
+
+Problem 5: Use `mapvalues` to relabel the levels of the `income.class` column into just two categories: those who make under $40K, and those who make $40K or more
+
+HINT: If you save the output of the `levels` command as a vector, it can save you a lot of typing! 
+
+```{r}
+# Fill in, with comments added:
+expenditures$income.class = mapvalues(expenditures$income.class,
+                          from = c("$5K-$9,999", "$10K-$14,999", "$15K-$19,999",
+                            "$20K-$29,999", "$30K-$39,999", "$40K-$49,999",
+                            "$50K-$69,999", "$70K+"),
+                          to = c("Under $40K", "Under $40K", "Under $40K", "Under $40K", "$40k or more", 
+                                 "$40k or more", "$40k or more", "$40k or more") )
+expenditures$income.class
+
+```
+
+

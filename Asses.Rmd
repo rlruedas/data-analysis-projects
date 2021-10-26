@@ -1,0 +1,52 @@
+---
+title: "Assessment"
+author: "Reister L. Ruedas"
+date: "5/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2movies) # contains the movies dataset
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(Hmisc)
+
+data("mtcars")
+mtcars
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+ggplot(mtcars, aes(cyl)) +
+  geom_histogram(binwidth=1) + xlab('Cylinders') + ylab('Number of Cars') +
+   ggtitle('Distribution of Cars by Cylinders')
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+qplot(cyl, mpg, data = mtcars, colour = cyl, geom = "point",     
+  ylab = "Miles per Gallon", xlab = "No. of Cylinders",
+  main = "Impact of Number of Cylinders on MPG")     
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+ggplot(mtcars, aes(hp, mpg)) + geom_point() +
+  ylab("Miles per Gallon") +
+  xlab("No. of Horsepower") +
+  ggtitle("Impact of Number of Horsepower on MPG")
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
